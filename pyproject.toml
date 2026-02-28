@@ -1,7 +1,10 @@
 [project]
 name = "rosarito-model-epanet"
 version = "0.1.0"
-description = "Add your description here"
+description = "Rosarito desalination plant seawater intake EPANET hydraulic model"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["epyt"]
+
+[tool.setuptools]
+packages = ["rosarito"]

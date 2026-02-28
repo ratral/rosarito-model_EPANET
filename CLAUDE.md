@@ -15,24 +15,36 @@ Hydraulic model of the Rosarito Desalination Plant seawater intake system (Baja 
 # Python version
 python --version  # Requires >= 3.11 (see .python-version)
 
-# Run the project
+# Install (creates venv + installs epyt dependency)
+uv venv && source .venv/bin/activate && uv pip install -e .
+
+# Run all analyses (staging + energy + EPS)
 python main.py
 
-# Dependencies (currently none — add wntr when building automation)
-pip install -e .
+# Run individual analyses
+python main.py staging      # Steady-state staging scenarios with validation
+python main.py energy       # Energy post-processing (power, kWh)
+python main.py eps          # 24h EPS with scheduled pump trips
 ```
 
-No test suite, linter, or build system is configured yet. The project uses `pyproject.toml` (pip/uv compatible).
+No test suite or linter configured. The project uses `pyproject.toml` (uv/pip compatible). Automation toolkit: **EPyT** (EPANET Python Toolkit by OpenWaterAnalytics).
 
 ## Architecture
 
 ### Repository Layout
 
 - `ROSARITO_Project_Instructions.md` — **Master specification.** All confirmed parameters, modeling decisions, and open items. This document takes precedence when values conflict with other files.
-- `inp_files/` — EPANET `.inp` model files (Rev0, Rev1, Rev2). `ROSARITO_EPANET_Rev2.inp` is the current production model.
+- `inp_files/` — EPANET `.inp` model files (Rev0, Rev1, Rev2). `ROSARITO_EPANET_Rev2.inp` is the current production model. **Never modified by Python code.**
 - `data/` — Supporting data: `riko_cylinder_e_dn1800.csv` (valve Kv values), `ruhrpumpen_35wx_characteristics.md` (pump datasheet extraction), `report_2.md` (engineering report).
 - `docs/` — Reference PDFs (pump datasheet, valve sizing report, CCWI 2015 control paper, system questionnaire).
-- `main.py` — Placeholder entry point. Next phase: WNTR automation wrapper.
+- `main.py` — Entry point for automated analyses (staging, energy, EPS).
+- `rosarito/` — Python package (EPyT-based automation):
+  - `constants.py` — All design parameters, element IDs, reference operating points from Project Instructions.
+  - `model.py` — `RosaritoModel` class wrapping EPyT; domain accessors and result dataclasses.
+  - `scenarios.py` — Steady-state staging (4 scenarios) and 24h EPS with pump trips.
+  - `energy.py` — Pump power (P_hyd, P_shaft, motor load%) and 24h energy calculations.
+  - `validation.py` — Compares EPANET results vs hand-calculated reference (Section 5); flags >5% deviations.
+  - `reporting.py` — Formatted console tables for engineering review.
 
 ### System Topology (EPANET Network)
 
