@@ -1,0 +1,475 @@
+% Options for packages loaded elsewhere
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  letterpaper,
+  DIV=11,
+  numbers=noendperiod]{scrartcl}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+% Make \paragraph and \subparagraph free-standing
+\makeatletter
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}{
+    \@ifstar
+      \xxxParagraphStar
+      \xxxParagraphNoStar
+  }
+  \newcommand{\xxxParagraphStar}[1]{\oldparagraph*{#1}\mbox{}}
+  \newcommand{\xxxParagraphNoStar}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}{
+    \@ifstar
+      \xxxSubParagraphStar
+      \xxxSubParagraphNoStar
+  }
+  \newcommand{\xxxSubParagraphStar}[1]{\oldsubparagraph*{#1}\mbox{}}
+  \newcommand{\xxxSubParagraphNoStar}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+\makeatother
+
+
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+
+
+
+
+
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+
+
+ 
+
+
+\KOMAoption{captions}{tableheading}
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\AtBeginDocument{%
+\ifdefined\contentsname
+  \renewcommand*\contentsname{Table of contents}
+\else
+  \newcommand\contentsname{Table of contents}
+\fi
+\ifdefined\listfigurename
+  \renewcommand*\listfigurename{List of Figures}
+\else
+  \newcommand\listfigurename{List of Figures}
+\fi
+\ifdefined\listtablename
+  \renewcommand*\listtablename{List of Tables}
+\else
+  \newcommand\listtablename{List of Tables}
+\fi
+\ifdefined\figurename
+  \renewcommand*\figurename{Figure}
+\else
+  \newcommand\figurename{Figure}
+\fi
+\ifdefined\tablename
+  \renewcommand*\tablename{Table}
+\else
+  \newcommand\tablename{Table}
+\fi
+}
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{ruled}
+\@ifundefined{c@chapter}{\newfloat{codelisting}{h}{lop}}{\newfloat{codelisting}{h}{lop}[chapter]}
+\floatname{codelisting}{Listing}
+\newcommand*\listoflistings{\listof{codelisting}{List of Listings}}
+\makeatother
+\makeatletter
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
+\makeatother
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+
+\author{}
+\date{}
+\begin{document}
+
+
+\section{Rosarito Desalination Plant --- Pump Operation Scenarios
+Report}\label{rosarito-desalination-plant-pump-operation-scenarios-report}
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Field & Value \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Project} & Rosarito Desalination Plant --- Seawater Intake
+System \\
+\textbf{Client} & CONAGUA / AYESA S.A. de C.V. \\
+\textbf{Engineer} & Dr.~Raul Trujillo (VAG GmbH) \\
+\textbf{Model} & ROSARITO\_EPANET\_Rev2.inp \\
+\textbf{Date} & 2026-02-28 \\
+\textbf{Software} & EPANET 2.2 via EPyT \\
+\end{longtable}
+
+\subsection{System Overview}\label{system-overview}
+
+\subsubsection{Topology}\label{topology}
+
+\begin{verbatim}
+SEA (H=0m) -> P_INTAKE -> J_SUCTION -> PUMP_1..5 (parallel) -> J_MANIFOLD
+-> P_US -> J_RIKO_IN -> RIKO valve (GPV) -> J_RIKO_OUT
+-> P_DS -> PLANT (H=18.17m)
+\end{verbatim}
+
+\subsubsection{Equipment}\label{equipment}
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Equipment & Specification \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Pumps & 5x Ruhrpumpen 35WX vertical centrifugal (4 duty + 1 standby) \\
+Control valve & VAG RIKO DN1800 plunger valve \\
+Configuration & N+1 redundancy, rule-based staging \\
+Pipe material & DN2500 (intake), DN1800 (upstream/downstream) \\
+Friction model & Darcy-Weisbach \\
+\end{longtable}
+
+\subsection{Steady-State Staging
+Scenarios}\label{steady-state-staging-scenarios}
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0464}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0927}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0728}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0993}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.1060}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0927}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0795}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0861}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0795}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0993}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0728}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 22\tabcolsep) * \real{0.0728}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+Pumps
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+RIKO phi (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Kv (m3/h)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Q\_total (l/s)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Q\_total (m3/h)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Q/pump (l/s)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+H\_pump (m)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+dH\_RIKO (m)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+v\_DS (m/s)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+hf\_INTAKE (m)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+hf\_US (m)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+hf\_DS (m)
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+4 & 44 & 21,038.45 & 5012.2 & 18044 & 1253.1 & 26.14 & 7.50 & 1.970 &
+0.029 & 0.094 & 0.345 \\
+3 & 38 & 14,444.21 & 3660.9 & 13179 & 1220.3 & 26.93 & 8.50 & 1.439 &
+0.016 & 0.052 & 0.190 \\
+2 & 30 & 7,621.47 & 2218.6 & 7987 & 1109.3 & 29.51 & 11.24 & 0.872 &
+0.006 & 0.020 & 0.074 \\
+1 & 22 & 3,179.78 & 1012.3 & 3644 & 1012.3 & 31.66 & 13.47 & 0.398 &
+0.001 & 0.005 & 0.017 \\
+\end{longtable}
+
+\subsection{Energy Summary}\label{energy-summary}
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.0631}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.1261}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.1081}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.0811}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.1081}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.1261}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.1441}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.1261}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 16\tabcolsep) * \real{0.1171}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+Pumps
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Q/pump (l/s)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+H\_pump (m)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+eta (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+P\_hyd (kW)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+P\_shaft (kW)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Motor load (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+P\_total (kW)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+E\_24h (kWh)
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+4 & 1253.1 & 26.14 & 88.0 & 329.4 & 374.3 & 83.7 & 1497.1 & 35931 \\
+3 & 1220.3 & 26.93 & 88.0 & 330.4 & 375.4 & 84.0 & 1126.3 & 27031 \\
+2 & 1109.3 & 29.51 & 88.0 & 329.1 & 374.0 & 83.7 & 748.0 & 17953 \\
+1 & 1012.3 & 31.66 & 88.0 & 322.3 & 366.3 & 81.9 & 366.3 & 8790 \\
+\end{longtable}
+
+\subsection{Validation --- Computed vs Hand-Calculated
+Reference}\label{validation-computed-vs-hand-calculated-reference}
+
+Tolerance: 5\%. Reference values from Project Instructions Section 5.
+
+\subsubsection{4-pump scenario (phi=44\%) ---
+PASS}\label{pump-scenario-phi44-pass}
+
+\begin{longtable}[]{@{}lrrrc@{}}
+\toprule\noalign{}
+Parameter & Computed & Reference & Deviation (\%) & Result \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Q\_total & 5012.21 & 5016.00 & 0.08 & OK \\
+Q/pump & 1253.05 & 1254.00 & 0.08 & OK \\
+H\_pump & 26.14 & 26.12 & 0.08 & OK \\
+dH\_RIKO & 7.50 & 7.51 & 0.09 & OK \\
+\end{longtable}
+
+\subsubsection{3-pump scenario (phi=38\%) ---
+PASS}\label{pump-scenario-phi38-pass}
+
+\begin{longtable}[]{@{}lrrrc@{}}
+\toprule\noalign{}
+Parameter & Computed & Reference & Deviation (\%) & Result \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Q\_total & 3660.85 & 3664.00 & 0.09 & OK \\
+Q/pump & 1220.28 & 1221.00 & 0.06 & OK \\
+H\_pump & 26.93 & 26.90 & 0.10 & OK \\
+dH\_RIKO & 8.50 & 8.50 & 0.02 & OK \\
+\end{longtable}
+
+\subsubsection{2-pump scenario (phi=30\%) ---
+PASS}\label{pump-scenario-phi30-pass}
+
+\begin{longtable}[]{@{}lrrrc@{}}
+\toprule\noalign{}
+Parameter & Computed & Reference & Deviation (\%) & Result \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Q\_total & 2218.60 & 2221.00 & 0.11 & OK \\
+Q/pump & 1109.30 & 1111.00 & 0.15 & OK \\
+H\_pump & 29.51 & 29.48 & 0.09 & OK \\
+dH\_RIKO & 11.24 & 11.22 & 0.15 & OK \\
+\end{longtable}
+
+\subsubsection{1-pump scenario (phi=22\%) ---
+PASS}\label{pump-scenario-phi22-pass}
+
+\begin{longtable}[]{@{}lrrrc@{}}
+\toprule\noalign{}
+Parameter & Computed & Reference & Deviation (\%) & Result \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Q\_total & 1012.32 & 1014.00 & 0.17 & OK \\
+Q/pump & 1012.32 & 1014.00 & 0.17 & OK \\
+H\_pump & 31.66 & 31.63 & 0.11 & OK \\
+dH\_RIKO & 13.47 & 13.44 & 0.23 & OK \\
+\end{longtable}
+
+\begin{quote}
+\textbf{Warning:} Q\_total = 3644 m3/h \textless{} VAG Qmin (4500 m3/h)
+--- known system characteristic for 1-pump
+\end{quote}
+
+\subsection{24h Extended Period Simulation --- Event
+Log}\label{h-extended-period-simulation-event-log}
+
+Pump trips scheduled at: - \textbf{PUMP\_4}: trip at hour 6, restore at
+hour 8 - \textbf{PUMP\_3}: trip at hour 12, restore at hour 14 -
+\textbf{PUMP\_2}: trip at hour 18, restore at hour 20
+
+\begin{longtable}[]{@{}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.0779}}
+  >{\centering\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.0519}}
+  >{\centering\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.0519}}
+  >{\centering\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.0519}}
+  >{\centering\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.0519}}
+  >{\centering\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.0519}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.1039}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.0779}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.1558}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.1688}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 20\tabcolsep) * \real{0.1558}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedleft
+Time
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+P1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+P2
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+P3
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+P4
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+P5
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Active
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+RIKO
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Q\_DS (l/s)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Q\_DS (m3/h)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+H\_pump (m)
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+0:00 & ON & ON & ON & ON & OFF & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+6:00 & ON & ON & ON & OFF & OFF & 3 & 44\% & 4083.4 & 14700 & 23.48 \\
+6:00 & ON & ON & ON & OFF & ON & 4 & 38\% & 4300.1 & 15481 & 30.28 \\
+6:00 & ON & ON & ON & OFF & ON & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+8:00 & ON & ON & ON & ON & ON & 5 & 44\% & 5733.4 & 20640 & 28.65 \\
+8:00 & ON & ON & ON & ON & OFF & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+12:00 & ON & ON & OFF & ON & OFF & 3 & 44\% & 4083.4 & 14700 & 23.48 \\
+12:00 & ON & ON & OFF & ON & ON & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+14:00 & ON & ON & ON & ON & ON & 5 & 44\% & 5733.4 & 20640 & 28.65 \\
+14:00 & ON & ON & ON & ON & OFF & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+18:00 & ON & OFF & ON & ON & OFF & 3 & 44\% & 4083.4 & 14700 & 23.48 \\
+18:00 & ON & OFF & ON & ON & ON & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+20:00 & ON & ON & ON & ON & ON & 5 & 44\% & 5733.4 & 20640 & 28.65 \\
+20:00 & ON & ON & ON & ON & OFF & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+24:00 & ON & ON & ON & ON & OFF & 4 & 44\% & 5012.2 & 18044 & 26.14 \\
+\end{longtable}
+
+\subsection{Notes and Warnings}\label{notes-and-warnings}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{H\_PLANT = 18.17 m} is back-calculated from system data, not
+  field-measured. All operating points shift if this value changes.
+\item
+  \textbf{1-pump scenario} produces Q\_total \textless{} VAG Qmin (4500
+  m3/h). This is a known system characteristic, not a modeling error.
+\item
+  Valve headloss uses ISO 5167 Kv method: dH = Q\^{}2 x 132.15 /
+  Kv\^{}2. VAG's internal zeta values are \textbf{not} used.
+\item
+  Pump efficiency is fixed at the duty-point value for energy
+  calculations. Actual efficiency varies with operating point.
+\item
+  EPS rule-based controls handle standby pump activation (PUMP\_5) and
+  RIKO valve position changes automatically per Georgescu et al.~(CCWI
+  2015).
+\end{enumerate}
+
+
+
+
+\end{document}
