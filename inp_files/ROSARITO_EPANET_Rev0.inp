@@ -1,0 +1,580 @@
+[TITLE]
+;================================================================
+; ROSARITO DESALINATION PLANT - SEAWATER INTAKE SYSTEM
+; Desaladora Rosarito, Baja California, Mexico
+;----------------------------------------------------------------
+; Client    : CONAGUA / AYESA S.A. de C.V.
+; Engineer  : JULIAN BAHENA (VAG sizing) / Dr. R. Trujillo
+; Date      : 27/02/2026
+; Units     : LPS (metric) | Headloss: Darcy-Weisbach
+;----------------------------------------------------------------
+; PUMPS     : 5 x Ruhrpumpen 35WX PB0 Vertical (4 duty + 1 standby)
+;             Q_rated = 1,256 l/s per pump | H_rated = 26.07 m
+;             Speed = 885 rpm | Efficiency = 89% | P_motor = 447 kW
+;             BEP_bowl = 1,237 l/s | H_shutoff = 46.54 m
+;             Ref: Ruhrpumpen datasheet 35WX-011-8, Rev5 Jan 2026
+;
+; VALVE     : VAG RIKO DN1800 PN16 (Plunger Control Valve)
+;             Application: Control valve (Valvula de control)
+;             Medium: Seawater | Temp_max = 20 deg C
+;             Upstream pipe: DN1800, L=80m, Carbon Steel
+;             Downstream pipe: DN1800, L=303m, GRP/PRFV
+;             Operating range: phi=22% (Qmin) to phi=44% (Qmax)
+;             Cavitation: Safe across full operating range
+;             Ref: VAG RIKO sizing ROSARITO, 27/02/2026
+;
+; DESIGN POINT (4 pumps duty):
+;   Q_total  = 5,021 l/s  (18,077 m3/h) [EPANET computed]
+;   Q/pump   = 1,255 l/s  (design: 1,256 l/s)  OK
+;   H_pump   = 26.09 m    (design: 26.07 m)     OK
+;   RIKO_dH  = 5.36 m     (VAG: 5.31-5.33 m)    OK
+;   v_pipe   = 1.966 m/s  (DN1800)
+;
+; HYDRAULIC BOUNDARIES:
+;   H_SEA    =  0.00 m  (MSL datum)
+;   H_PLANT  = 20.29 m  (back-calculated: H_pump - hf_US - RIKO_dH - hf_DS)
+;              = 26.07 - 0.09 - 5.31 - 0.34 = 20.33 m ≈ 20.30 m
+;              = consistent with VAG: P_up=0.80 bar, P_dn=0.28 bar at valve
+;
+; RIKO VALVE EPANET MODEL - PARALLEL GPV STRATEGY:
+;   The RIKO DN1800 is modeled as 4 parallel GPV (General Purpose Valve)
+;   links, each with a headloss curve for a fixed valve opening:
+;     RIKO_44 (phi=44%, zeta=27)  -> 4-pump duty         [initial: OPEN]
+;     RIKO_38 (phi=38%, zeta=54)  -> 3-pump operation    [initial: CLOSED]
+;     RIKO_30 (phi=30%, zeta=129) -> 2-pump operation    [initial: CLOSED]
+;     RIKO_22 (phi=22%, zeta=590) -> 1-pump / Qmin limit [initial: CLOSED]
+;   Rule-based controls ensure only ONE GPV is OPEN at any time.
+;   GPV headloss: dH = zeta * Q^2 / (2g * A_pipe^2)
+;   where A_pipe(DN1800) = 2.5447 m^2, K = 7.871e-9 m/(l/s)^2
+;
+; STAGING VALIDATION:
+;   4 pumps: Q=5021 l/s (18077 m3/h) | RIKO phi=44% | dH=5.36 m
+;   3 pumps: Q=3732 l/s (13436 m3/h) | RIKO phi=38% | dH=5.92 m
+;   2 pumps: Q=2477 l/s ( 8919 m3/h) | RIKO phi=30% | dH=6.23 m
+;   1 pump : Q=1220 l/s ( 4392 m3/h) | RIKO phi=22% | dH=6.91 m
+;
+; CAUTION - 1 PUMP SCENARIO:
+;   EPANET yields Q=1220 l/s (4392 m3/h) < VAG Qmin=4500 m3/h (1250 l/s)
+;   Gap is 30 l/s (108 m3/h). Valve is near but below its minimum.
+;   Recommend: open RIKO slightly past 22% for 1-pump scenarios,
+;   or avoid sustained single-pump operation.
+;================================================================
+
+[JUNCTIONS]
+;ID            Elev    Demand    Pattern
+;------------------------------------------
+ J_SUCTION     0       0                   ;Common pump suction header / intake well
+ J_MANIFOLD    0       0                   ;Common pump discharge manifold header
+ J_RIKO_IN     0       0                   ;RIKO upstream face  (VAG: P=0.80 bar static)
+ J_RIKO_OUT    0       0                   ;RIKO downstream face (VAG: P=0.28 bar static)
+
+[RESERVOIRS]
+;ID      Head      Pattern
+;---------------------------
+ SEA      0.00               ;Sea surface - datum (MSL = 0)
+ PLANT   20.30               ;Desalination plant intake forebay
+                             ;Back-calculated: H_pump(26.07) - hf_US(0.09) - RIKO_dH(5.31) - hf_DS(0.34) = 20.33 m
+
+[PIPES]
+;ID           Node1       Node2        Length   Diam   Roughness  MinorLoss  Status
+;-----------------------------------------------------------------------------------
+ P_INTAKE     SEA         J_SUCTION    10       2500   0.10       0.50       OPEN
+;              Sea intake conduit to pump suction well
+;              L=10m | D=2500mm | eps=0.10mm (HDPE/concrete intake)
+;              MinorLoss K=0.50 (intake screen + entrance + bend equivalent)
+;              hf at Qmax(5000 l/s): 0.03 m (negligible)
+
+ P_US         J_MANIFOLD  J_RIKO_IN    80       1800   0.046      0          OPEN
+;              Upstream discharge pipe: Carbon Steel, DN1800, L=80m
+;              eps=0.046mm (commercial steel, clean, unfouled)
+;              f=0.0107 at Re=3.37e6 | hf at Qmax: 0.09 m
+;              Source: VAG questionnaire - acero, 80m upstream
+
+ P_DS         J_RIKO_OUT  PLANT        303      1800   0.030      0          OPEN
+;              Downstream transfer pipe: GRP/PRFV, DN1800, L=303m
+;              eps=0.030mm (glass-reinforced plastic, smooth)
+;              f=0.0103 at Re=3.25e6 | hf at Qmax: 0.34 m
+;              Source: VAG questionnaire - PRFV, 303m downstream
+
+[PUMPS]
+;ID       Node1       Node2        Keyword    Value
+;----------------------------------------------------
+ PUMP_1   J_SUCTION   J_MANIFOLD   HEAD       PC_35WX
+ PUMP_2   J_SUCTION   J_MANIFOLD   HEAD       PC_35WX
+ PUMP_3   J_SUCTION   J_MANIFOLD   HEAD       PC_35WX
+ PUMP_4   J_SUCTION   J_MANIFOLD   HEAD       PC_35WX
+;Ruhrpumpen 35WX | Vertical single-stage | 885 rpm | 60 Hz
+;Q_rated=1256 l/s | H_rated=26.07 m | eta=89% | P_motor=447 kW
+;Impeller: 20.63 in (524 mm nominal) | ANSI/HI 9.6.3: Acceptable
+
+ PUMP_5   J_SUCTION   J_MANIFOLD   HEAD       PC_35WX
+;STANDBY pump - initial status CLOSED (see [STATUS])
+;Activated by rules on any duty pump trip (N+1 redundancy)
+
+[VALVES]
+;ID          Node1       Node2        Diam   Type   Setting      MinorLoss
+;---------------------------------------------------------------------------
+;VAG RIKO DN1800 PN16 - modeled as 4 parallel GPV links
+;Outlet type E | Seawater | P_max_working = 2.16 bar
+;Only ONE valve link is OPEN at any simulation time (controlled by RULES)
+
+ RIKO_44     J_RIKO_IN   J_RIKO_OUT   1800   GPV    RIKO_44pct   0
+;phi=44% | zeta=27  | 4-pump duty    | Q=18,000 m3/h | dH=5.31 m
+;INITIAL STATUS: OPEN (design condition - see [STATUS])
+
+ RIKO_38     J_RIKO_IN   J_RIKO_OUT   1800   GPV    RIKO_38pct   0
+;phi=38% | zeta=54  | 3-pump service | Q=13,500 m3/h | dH=5.92 m
+;INITIAL STATUS: CLOSED (see [STATUS])
+
+ RIKO_30     J_RIKO_IN   J_RIKO_OUT   1800   GPV    RIKO_30pct   0
+;phi=30% | zeta=129 | 2-pump service | Q= 9,000 m3/h | dH=6.23 m
+;INITIAL STATUS: CLOSED (see [STATUS])
+
+ RIKO_22     J_RIKO_IN   J_RIKO_OUT   1800   GPV    RIKO_22pct   0
+;phi=22% | zeta=590 | 1-pump / Qmin  | Q= 4,392 m3/h | dH=6.91 m
+;INITIAL STATUS: CLOSED (see [STATUS])
+;WARNING: 1-pump Q(1220 l/s) slightly below VAG Qmin(1250 l/s). See TITLE.
+
+[STATUS]
+;ID          Status
+;------------------
+ PUMP_5      CLOSED      ;Standby - activated by Rule R_STBY_P* on pump trip
+ RIKO_38     CLOSED      ;3-pump curve - activated by Rule R_3P_VALVE
+ RIKO_30     CLOSED      ;2-pump curve - activated by Rule R_2P_VALVE
+ RIKO_22     CLOSED      ;1-pump curve - activated by Rule R_1P_VALVE
+
+[PATTERNS]
+;No demand patterns required - pure transfer system (reservoir to reservoir)
+
+[CURVES]
+;==================================================================
+; PUMP HEAD CURVE - Ruhrpumpen 35WX (1-stage, 20.63 in impeller)
+; Speed: 885 rpm | 60 Hz supply | Seawater, SG=1.025
+; EPANET fits: H = A - B*Q^C to these 3 points
+; Points from: Ruhrpumpen datasheet 35WX-011-8 Rev5, Jan 2026
+;------------------------------------------------------------------
+;ID         Q(LPS)     H(m)
+ PC_35WX    0          46.54     ;Shutoff head (datasheet: Hmax = 46.54 m)
+ PC_35WX    1256       26.07     ;Rated duty point (datasheet: Q=1256 l/s, H=26.07 m)
+ PC_35WX    1700       8.00      ;Estimated runout (read from datasheet curve image)
+;Note: BEP_bowl=1237 l/s | Min stable flow=845 l/s | eta_max=89%
+;Runout Q=1700 l/s verified: H=46.54 - 1.298e-5 * 1700^2 = 8.98 m (consistent)
+
+;==================================================================
+; PUMP EFFICIENCY CURVE - Ruhrpumpen 35WX
+; Used by EPANET [ENERGY] section for power calculations
+;------------------------------------------------------------------
+;ID         Q(LPS)     Efficiency(%)
+ EFF_35WX   845        68.0          ;Min stable flow (ANSI/HI 9.6.3 limit, estimated)
+ EFF_35WX   1237       89.0          ;BEP bowl (datasheet: Q_BEP_bowl = 1237 l/s)
+ EFF_35WX   1700       55.0          ;Runout (estimated, steep efficiency drop)
+;Hydraulic power at duty: P_hyd = rho*g*Q*H = 1025*9.81*1.256*26.07 = 328 kW
+;Shaft power at duty: P_shaft = 328/0.89 = 368 kW | Motor: 447 kW (1.15 SF)
+
+;==================================================================
+; RIKO DN1800 GPV HEADLOSS CURVES
+; Source: VAG RIKO Zeta curve, ROSARITO sizing (27/02/2026)
+; Formula: dH [m] = zeta * Q^2 [l/s] * K
+;   K = 1/(2 * 9.81 * 2.5447^2) = 7.871e-9 m/(l/s)^2
+;   A_valve = pi/4 * 1.800^2 = 2.5447 m^2
+; Curves are parabolic (dH proportional to Q^2) - monotonically increasing
+;
+; Interpolated zeta values from VAG Zeta Curve (PDF chart):
+;   phi=10%: zeta=10253 | phi=20%: zeta=705 | phi=30%: zeta=129
+;   phi=40%: zeta=35    | phi=50%: zeta=14  | phi=60%: zeta=7
+;   phi=70%: zeta=4     | phi=80%: zeta=3   | phi=100%: zeta=2
+; Interpolated: phi=22%: zeta=590 | phi=38%: zeta=54 | phi=44%: zeta=27
+;==================================================================
+
+;--- RIKO_44pct: phi=44% opening | zeta=27 ---
+;    4-pump duty condition | Q_design=5000 l/s | dH_design=5.31 m
+;    VAG verified: Q=18000 m3/h at 44% -> dH=5.33 m (match within 0.4%)
+;ID              Q(LPS)    dH(m)
+ RIKO_44pct      0         0.000
+ RIKO_44pct      1000      0.213
+ RIKO_44pct      2000      0.850
+ RIKO_44pct      3000      1.913
+ RIKO_44pct      4000      3.400
+ RIKO_44pct      5000      5.313      ;VAG: 5.33 m at 44%, Q=18000 m3/h -> OK
+ RIKO_44pct      6000      7.651      ;Beyond Qmax - extrapolation boundary
+
+;--- RIKO_38pct: phi=38% opening | zeta=54 ---
+;    3-pump operation | Q_design=3760 l/s | dH_design=6.01 m
+;    zeta(38%) interpolated: 35 + (40-38)/(40-30) * (129-35) = 53.8 ~ 54
+;ID              Q(LPS)    dH(m)
+ RIKO_38pct      0         0.000
+ RIKO_38pct      1000      0.425
+ RIKO_38pct      2000      1.700
+ RIKO_38pct      3000      3.825
+ RIKO_38pct      3760      6.009      ;3-pump operating point (3 x 1253 l/s)
+ RIKO_38pct      4500      8.607      ;Upper boundary
+
+;--- RIKO_30pct: phi=30% opening | zeta=129 ---
+;    2-pump operation | Q_design=2512 l/s | dH_design=6.41 m
+;    zeta(30%) = 129 (directly read from VAG Zeta curve chart)
+;ID              Q(LPS)    dH(m)
+ RIKO_30pct      0         0.000
+ RIKO_30pct      500       0.254
+ RIKO_30pct      1000      1.015
+ RIKO_30pct      1500      2.285
+ RIKO_30pct      2000      4.061
+ RIKO_30pct      2512      6.407      ;2-pump operating point (2 x 1256 l/s)
+ RIKO_30pct      3000      9.138      ;Upper boundary
+
+;--- RIKO_22pct: phi=22% opening | zeta=590 ---
+;    1-pump / Qmin condition | Q_design=1250 l/s | dH_VAG=7.17 m
+;    zeta(22%) interpolated: 705 + (22-20)/(30-20) * (129-705) = 589.8 ~ 590
+;    EPANET operating point: Q=1220 l/s (slightly below VAG Qmin 1250 l/s)
+;ID              Q(LPS)    dH(m)
+ RIKO_22pct      0         0.000
+ RIKO_22pct      250       0.290
+ RIKO_22pct      500       1.161
+ RIKO_22pct      750       2.612
+ RIKO_22pct      1000      4.644
+ RIKO_22pct      1250      7.256      ;VAG reference: dH=7.17 m at Qmin -> match 1.2%
+ RIKO_22pct      1500      10.449     ;Upper boundary
+
+[CONTROLS]
+;No simple time-based controls needed.
+;All pump staging and valve positioning logic is handled by RULES below.
+;Use EPANET [CONTROLS] section for scheduled startup/shutdown EPS scenarios:
+;
+;  LINK PUMP_1 OPEN  AT TIME 0:00   ; all duty pumps start at hour 0
+;  LINK PUMP_2 OPEN  AT TIME 0:00
+;  LINK PUMP_3 OPEN  AT TIME 0:00
+;  LINK PUMP_4 OPEN  AT TIME 0:00
+;  LINK PUMP_5 CLOSED AT TIME 0:00  ; standby initially closed
+
+[RULES]
+;==================================================================
+; RULE-BASED CONTROLS - Rosarito Seawater Intake
+; Ruhrpumpen 35WX x 5 | VAG RIKO DN1800
+;
+; DESIGN PHILOSOPHY:
+;   Rules select the correct RIKO opening based on the number of
+;   active pumps. Each staging scenario activates exactly ONE GPV link.
+;   Rule PRIORITY ordering follows Georgescu et al. (CCWI 2015):
+;   higher priority number fires first.
+;
+; RULE EXECUTION ORDER AT EACH HYDRAULIC TIMESTEP:
+;   1. PRIORITY 10: Standby pump activation (urgent - pump failure)
+;   2. PRIORITY 5:  Standby pump deactivation (when duty restored)
+;   3. PRIORITY 4:  4-pump / 4-pump+standby valve position
+;   4. PRIORITY 3:  3-pump valve position (no standby)
+;   5. PRIORITY 2:  2-pump valve position
+;   6. PRIORITY 1:  1-pump valve position (Qmin condition)
+;
+; IMPORTANT: Rules check LINK STATUS (pump open/closed state).
+;   In EPS simulations, force pump trips via [CONTROLS] time statements
+;   and let these rules respond dynamically.
+;==================================================================
+
+;------------------------------------------------------------------
+; SECTION 1: RIKO VALVE POSITION BASED ON PUMP COUNT
+;------------------------------------------------------------------
+
+;--- 4 DUTY PUMPS RUNNING: RIKO at 44% opening (design condition) ---
+RULE R_4P_VALVE
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK RIKO_44 STATUS = OPEN
+AND LINK RIKO_38 STATUS = CLOSED
+AND LINK RIKO_30 STATUS = CLOSED
+AND LINK RIKO_22 STATUS = CLOSED
+PRIORITY 4
+;Expected: Q_total=5021 l/s | Q/pump=1255 l/s | dH_RIKO=5.36 m
+
+;--- 4 PUMPS RUNNING WITH STANDBY ACTIVE (1 duty pump tripped + P5 ON) ---
+;    STANDBY REPLACES duty pump -> total still 4 pumps -> keep 44% curve
+RULE R_4P_STBY_P1_VALVE
+IF LINK PUMP_1 STATUS = CLOSED
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = OPEN
+THEN LINK RIKO_44 STATUS = OPEN
+AND LINK RIKO_38 STATUS = CLOSED
+AND LINK RIKO_30 STATUS = CLOSED
+AND LINK RIKO_22 STATUS = CLOSED
+PRIORITY 4
+
+RULE R_4P_STBY_P2_VALVE
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = CLOSED
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = OPEN
+THEN LINK RIKO_44 STATUS = OPEN
+AND LINK RIKO_38 STATUS = CLOSED
+AND LINK RIKO_30 STATUS = CLOSED
+AND LINK RIKO_22 STATUS = CLOSED
+PRIORITY 4
+
+RULE R_4P_STBY_P3_VALVE
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = CLOSED
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = OPEN
+THEN LINK RIKO_44 STATUS = OPEN
+AND LINK RIKO_38 STATUS = CLOSED
+AND LINK RIKO_30 STATUS = CLOSED
+AND LINK RIKO_22 STATUS = CLOSED
+PRIORITY 4
+
+RULE R_4P_STBY_P4_VALVE
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = CLOSED
+AND LINK PUMP_5 STATUS = OPEN
+THEN LINK RIKO_44 STATUS = OPEN
+AND LINK RIKO_38 STATUS = CLOSED
+AND LINK RIKO_30 STATUS = CLOSED
+AND LINK RIKO_22 STATUS = CLOSED
+PRIORITY 4
+
+;--- 3 PUMPS RUNNING, NO STANDBY: RIKO at 38% opening ---
+;    Scenario: Planned maintenance of one duty pump (PUMP_4 off, P5 not activated)
+RULE R_3P_VALVE
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = CLOSED
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK RIKO_38 STATUS = OPEN
+AND LINK RIKO_44 STATUS = CLOSED
+AND LINK RIKO_30 STATUS = CLOSED
+AND LINK RIKO_22 STATUS = CLOSED
+PRIORITY 3
+;Expected: Q_total=3732 l/s (13436 m3/h) | Q/pump=1244 l/s | dH_RIKO=5.92 m
+
+;--- 2 PUMPS RUNNING: RIKO at 30% opening ---
+RULE R_2P_VALVE
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = CLOSED
+AND LINK PUMP_4 STATUS = CLOSED
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK RIKO_30 STATUS = OPEN
+AND LINK RIKO_44 STATUS = CLOSED
+AND LINK RIKO_38 STATUS = CLOSED
+AND LINK RIKO_22 STATUS = CLOSED
+PRIORITY 2
+;Expected: Q_total=2477 l/s (8919 m3/h) | Q/pump=1239 l/s | dH_RIKO=6.23 m
+
+;--- 1 PUMP RUNNING: RIKO at 22% opening (VAG Qmin boundary) ---
+RULE R_1P_VALVE
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = CLOSED
+AND LINK PUMP_3 STATUS = CLOSED
+AND LINK PUMP_4 STATUS = CLOSED
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK RIKO_22 STATUS = OPEN
+AND LINK RIKO_44 STATUS = CLOSED
+AND LINK RIKO_38 STATUS = CLOSED
+AND LINK RIKO_30 STATUS = CLOSED
+PRIORITY 1
+;Expected: Q=1220 l/s (4392 m3/h) | dH_RIKO=6.91 m
+;CAUTION: Q slightly below VAG Qmin (1250 l/s = 4500 m3/h)
+
+;------------------------------------------------------------------
+; SECTION 2: STANDBY PUMP (PUMP_5) ACTIVATION
+; N+1 redundancy: PUMP_5 replaces any single tripped duty pump
+; Physical trigger: pump protection trip, alarm, flow confirmation
+; EPANET trigger: duty pump status changes to CLOSED
+;------------------------------------------------------------------
+
+;--- Standby ON when PUMP_1 trips ---
+RULE R_STBY_ON_P1
+IF LINK PUMP_1 STATUS = CLOSED
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK PUMP_5 STATUS = OPEN
+PRIORITY 10
+;PUMP_5 replaces PUMP_1 -> system returns to 4-pump operation
+
+;--- Standby ON when PUMP_2 trips ---
+RULE R_STBY_ON_P2
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = CLOSED
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK PUMP_5 STATUS = OPEN
+PRIORITY 10
+
+;--- Standby ON when PUMP_3 trips ---
+RULE R_STBY_ON_P3
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = CLOSED
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK PUMP_5 STATUS = OPEN
+PRIORITY 10
+
+;--- Standby ON when PUMP_4 trips ---
+RULE R_STBY_ON_P4
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = CLOSED
+AND LINK PUMP_5 STATUS = CLOSED
+THEN LINK PUMP_5 STATUS = OPEN
+PRIORITY 10
+
+;------------------------------------------------------------------
+; SECTION 3: STANDBY PUMP DEACTIVATION
+; When duty pump is restored and PUMP_5 is running with all 4 duty
+; pumps also running (overcapacity), shut PUMP_5 down.
+;------------------------------------------------------------------
+RULE R_STBY_OFF
+IF LINK PUMP_1 STATUS = OPEN
+AND LINK PUMP_2 STATUS = OPEN
+AND LINK PUMP_3 STATUS = OPEN
+AND LINK PUMP_4 STATUS = OPEN
+AND LINK PUMP_5 STATUS = OPEN
+THEN LINK PUMP_5 STATUS = CLOSED
+PRIORITY 5
+;All 4 duty pumps restored -> standby returns to hot-standby mode
+
+[ENERGY]
+;==================================================================
+; ENERGY PRICING AND EFFICIENCY
+; For accurate power/energy output in EPANET reports
+;==================================================================
+ Global Efficiency   89          ;Default: rated efficiency of 35WX at duty point (%)
+ Global Price        0.08        ;Indicative energy cost (USD/kWh) - update as required
+ Demand Charge       0.0
+ Pump PUMP_1         Efficiency  EFF_35WX
+ Pump PUMP_2         Efficiency  EFF_35WX
+ Pump PUMP_3         Efficiency  EFF_35WX
+ Pump PUMP_4         Efficiency  EFF_35WX
+ Pump PUMP_5         Efficiency  EFF_35WX
+;
+;Power consumption at design (4 pumps x 1256 l/s, H=26.07 m, eta=89%):
+;  P_hydraulic/pump = rho*g*Q*H = 1025*9.81*1.256*26.07 = 328.3 kW
+;  P_shaft/pump     = 328.3 / 0.89 = 368.9 kW
+;  P_total_4pumps   = 4 * 368.9 = 1475.6 kW (shaft)
+;  Motor nameplate: 4 * 447 kW = 1788 kW installed capacity
+
+[TIMES]
+;==================================================================
+; SIMULATION PERIOD
+;==================================================================
+ Duration              24:00       ;24-hour extended period simulation
+ Hydraulic Timestep     0:05       ;5-minute timestep (adequate for large-inertia system)
+ Quality Timestep       0:05       ;Not used (Quality = NONE)
+ Pattern Timestep       1:00       ;(no patterns active)
+ Report Timestep        0:30       ;Report every 30 minutes
+ Report Start           0:00
+ Start ClockTime        0:00 AM
+ Statistic              NONE
+
+[REPORT]
+;==================================================================
+; OUTPUT REPORT SETTINGS
+;==================================================================
+ Status      YES
+ Summary     YES
+ Energy      YES
+ Page        90
+ Nodes       ALL
+ Links       ALL
+ Pressure    YES
+ Flow        YES
+ Headloss    YES
+ Velocity    YES
+
+[OPTIONS]
+;==================================================================
+; SOLVER AND FLUID OPTIONS
+;==================================================================
+ Units               LPS           ;Liters per second (metric system)
+ Headloss            D-W           ;Darcy-Weisbach (correct for large-diameter industrial pipes)
+ Specific Gravity    1.025         ;Seawater at 20 deg C (questionnaire: agua de mar, T_max=20 C)
+ Viscosity           1.050         ;Relative kinematic viscosity (seawater/water at 20C = 1.046 ~ 1.05)
+                                   ;nu_seawater = 1.05e-6 m2/s | nu_water = 1.004e-6 m2/s
+ Trials              200           ;Max hydraulic solver iterations (increased for parallel GPVs)
+ Accuracy            0.00010       ;Convergence tolerance (flow balance, dimensionless)
+ Unbalanced          CONTINUE  10  ;Continue 10 extra iterations if not converged; log warning
+ Demand Multiplier   1.0
+ Emitter Exponent    0.5
+ Quality             NONE          ;Water quality simulation not required for this study
+ Diffusivity         1.0
+ Tolerance           0.01
+
+[COORDINATES]
+;==================================================================
+; NODE COORDINATES FOR EPANET GUI DISPLAY
+; Scale: 1 unit = 1 meter (approximate layout)
+; Origin: Sea intake structure
+;==================================================================
+;ID              X-coord    Y-coord
+ SEA             0          0
+ J_SUCTION       100        0
+ J_MANIFOLD      350        0
+ J_RIKO_IN       550        0
+ J_RIKO_OUT      750        0
+ PLANT           1100       0
+
+[VERTICES]
+;==================================================================
+; INTERMEDIATE VERTICES FOR LINK DISPLAY (pumps and valves as
+; parallel paths in the EPANET GUI for visual clarity)
+;==================================================================
+;ID          X      Y
+;--- 5 pumps shown as parallel paths between J_SUCTION and J_MANIFOLD ---
+ PUMP_1      150    120
+ PUMP_1      300    120
+ PUMP_2      150    60
+ PUMP_2      300    60
+ PUMP_3      150    0
+ PUMP_3      300    0
+ PUMP_4      150   -60
+ PUMP_4      300   -60
+ PUMP_5      150   -120
+ PUMP_5      300   -120
+;--- 4 RIKO GPV links shown as parallel paths between J_RIKO_IN and J_RIKO_OUT ---
+ RIKO_38     600    40
+ RIKO_38     700    40
+ RIKO_30     600    80
+ RIKO_30     700    80
+ RIKO_22     600   -40
+ RIKO_22     700   -40
+
+[LABELS]
+;==================================================================
+; TEXT LABELS FOR EPANET GUI DISPLAY
+;==================================================================
+;X-Coord   Y-Coord   Label-Text
+;--- Node labels ---
+ -10         20        "Mar (MSL)"
+ 90         -30        "Header\nAspiracion"
+ 340         20        "Manifold\nDescarga"
+ 540         20        "RIKO\nAguas Arriba"
+ 740         20        "RIKO\nAguas Abajo"
+ 1090        20        "Planta\nDesaladora"
+;--- Equipment labels ---
+ 160        130        "BOMBA 1 (35WX)"
+ 160         70        "BOMBA 2 (35WX)"
+ 160         10        "BOMBA 3 (35WX)"
+ 160        -50        "BOMBA 4 (35WX)"
+ 160       -110        "BOMBA 5 - RESERVA (35WX)"
+ 610         90        "RIKO phi=30% (2 bombas)"
+ 610         50        "RIKO phi=38% (3 bombas)"
+ 610         10        "RIKO phi=44% (4 bombas) SERVICIO"
+ 610        -30        "RIKO phi=22% (1 bomba / Qmin)"
+ 360        -30        "Acero DN1800 L=80m"
+ 850        -30        "GRP/PRFV DN1800 L=303m"
+
+[BACKDROP]
+;DIMENSIONS  0  -200  1200  250
+
+[END]
