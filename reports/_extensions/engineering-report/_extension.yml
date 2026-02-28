@@ -1,0 +1,18 @@
+title: Engineering Report
+author: "Dr. Raul Trujillo Alvarez"
+version: 1.0.0
+quarto-required: ">=1.4.0"
+description: "Professional engineering report template with parameterized theming for Typst"
+license: MIT
+categories:
+  - report
+  - engineering
+
+contributes:
+  formats:
+    typst:
+      template-partials:
+        - typst-show.typ
+        - typst-template.typ
+      toc: false
+      number-sections: true

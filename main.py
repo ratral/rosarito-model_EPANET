@@ -7,10 +7,12 @@ Usage:
     python main.py eps          # 24h EPS with pump trips only
     python main.py report       # Generate Markdown report → reports/scenarios_report.md
     python main.py report path  # Generate report to custom path
+    python main.py quarto       # Render Quarto PDF report → reports/report.pdf
 """
 
 from __future__ import annotations
 
+import subprocess
 import sys
 
 from rosarito.constants import INP_FILE
@@ -57,12 +59,33 @@ def run_report() -> None:
     generate_report(output_path)
 
 
+def run_quarto() -> None:
+    """Render the Quarto PDF report."""
+    from pathlib import Path
+
+    qmd = Path(__file__).resolve().parent / "reports" / "report.qmd"
+    if not qmd.exists():
+        print(f"Error: {qmd} not found", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Rendering Quarto report: {qmd}")
+    result = subprocess.run(
+        ["quarto", "render", str(qmd)],
+        cwd=str(qmd.parent),
+    )
+    if result.returncode != 0:
+        print("Quarto render failed.", file=sys.stderr)
+        sys.exit(result.returncode)
+    print(f"Report written to: {qmd.with_suffix('.pdf')}")
+
+
 def main() -> None:
     commands = {
         "staging": run_staging,
         "energy": run_energy,
         "eps": run_eps,
         "report": run_report,
+        "quarto": run_quarto,
     }
 
     if len(sys.argv) > 1:

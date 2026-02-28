@@ -1,0 +1,229 @@
+---
+title: "Rosarito Desalination Plant"
+subtitle: "Pump Operation Scenarios Report — Seawater Intake System"
+author: "Dr. Raul Trujillo"
+company: "VAG-Armaturen GmbH"
+date: today
+
+format:
+  engineering-report-typst:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+
+execute:
+  echo: false
+  warning: false
+
+jupyter: rosarito
+
+params:
+  document_version: "2.0"
+  confidentiality: "CONFIDENTIAL"
+  analysis_id: "RPT-ROSARITO-2026"
+  software_version: "EPANET 2.2 via EPyT"
+  report-logo: "../../assets/logos/vag-gf-logo.jpg"
+
+  # VAG & +GF+ theme (no # prefix — Pandoc escapes # for Typst)
+  theme-primary: "009D30"
+  theme-accent: "007025"
+  theme-secondary: "1965A3"
+  theme-gray: "808080"
+  theme-light-gray: "E8EBE8"
+  theme-dark: "000000"
+  body-font: "Arial"
+  heading-font: "Arial"
+  report-label: "HYDRAULIC ANALYSIS REPORT"
+  copyright-text: "VAG-Armaturen GmbH, a +GF+ brand. All rights reserved."
+  software-name: "VAG Engineering Tools — EPANET 2.2"
+---
+
+```{python}
+#| include: false
+
+import sys
+from pathlib import Path
+
+# Ensure the project root is on sys.path for imports
+project_root = str(Path.cwd().parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from IPython.display import Markdown
+
+from rosarito.scenarios import run_staging_scenarios, run_eps_with_trips, DEFAULT_PUMP_TRIPS
+from rosarito.energy import compute_all_scenario_energies
+from rosarito.validation import validate_all_scenarios
+from rosarito.tables import (
+    staging_dataframe,
+    energy_dataframe,
+    validation_dataframe,
+    eps_events_dataframe,
+)
+from rosarito.plotting import (
+    plot_pump_hq,
+    plot_energy_comparison,
+    plot_eps_timeseries,
+    plot_validation_deviations,
+)
+
+# Run all analyses once
+staging_results = run_staging_scenarios()
+energy_results = compute_all_scenario_energies(staging_results)
+validations = validate_all_scenarios(staging_results)
+eps = run_eps_with_trips()
+```
+
+# Executive Summary
+
+This report presents the hydraulic analysis of the seawater intake pumping system for the Rosarito Desalination Plant (Baja California, México). The system comprises five Ruhrpumpen 35WX vertical centrifugal pumps (4 duty + 1 standby) operating in parallel, controlled by a VAG RIKO DN1800 plunger valve that modulates headloss to maintain stable operating points across all staging scenarios.
+
+**Key findings:**
+
+- All four staging scenarios (4-pump down to 1-pump) converge to stable operating points within the pump's recommended operating envelope.
+- Validation against hand-calculated reference values shows deviations well below the 5% acceptance threshold.
+- The rule-based control system successfully manages pump trip/restore events during the 24-hour extended period simulation, with automatic standby pump activation and valve position adjustment.
+- The 1-pump scenario operates below the VAG minimum flow recommendation (4,500 m³/h), which is a known system characteristic.
+
+# System Overview
+
+## Topology
+
+```
+SEA (H=0m) → P_INTAKE → J_SUCTION → PUMP_1..5 (parallel) → J_MANIFOLD
+→ P_US → J_RIKO_IN → RIKO valve (GPV) → J_RIKO_OUT
+→ P_DS → PLANT (H=18.17m)
+```
+
+## Equipment
+
+| Equipment | Specification |
+|-----------|---------------|
+| Pumps | 5× Ruhrpumpen 35WX vertical centrifugal (4 duty + 1 standby) |
+| Control valve | VAG RIKO DN1800 plunger valve |
+| Configuration | N+1 redundancy, rule-based staging per Georgescu et al. (CCWI 2015) |
+| Intake pipe | DN2500, Darcy-Weisbach friction |
+| Upstream/downstream | DN1800, Darcy-Weisbach friction |
+
+## Operating Principle
+
+The RIKO plunger valve adjusts its opening (22%–44%) to match the number of active pumps, providing sufficient throttling headloss to keep each pump near its best efficiency point. Four parallel GPV links in EPANET model different valve openings; rule-based controls activate the correct GPV when pump count changes.
+
+# Steady-State Staging Scenarios
+
+Four scenarios model the system from full capacity (4 duty pumps) down to minimum capacity (1 pump). Each scenario uses the corresponding RIKO valve opening determined by the control rules.
+
+```{python}
+#| label: tbl-staging
+#| tbl-cap: "Steady-state operating points for all staging scenarios"
+
+df = staging_dataframe(staging_results)
+Markdown(df.to_markdown(index=False))
+```
+
+```{python}
+#| label: fig-pump-hq
+#| fig-cap: "Ruhrpumpen 35WX H-Q characteristic curve with computed operating points for each staging scenario"
+
+import matplotlib.pyplot as plt
+fig = plot_pump_hq(staging_results)
+plt.show()
+plt.close(fig)
+```
+
+# Energy Summary
+
+Pump power calculations use the ISO 5167 Kv-based headloss method. Efficiency is fixed at the duty-point value (η = 88%) for all scenarios. Actual efficiency varies slightly with operating point.
+
+```{python}
+#| label: tbl-energy
+#| tbl-cap: "Pump power and 24-hour energy consumption per staging scenario"
+
+df = energy_dataframe(energy_results)
+Markdown(df.to_markdown(index=False))
+```
+
+```{python}
+#| label: fig-energy
+#| fig-cap: "Total station shaft power and daily energy consumption by staging scenario"
+
+fig = plot_energy_comparison(energy_results)
+plt.show()
+plt.close(fig)
+```
+
+# Validation
+
+Computed EPANET results are compared against hand-calculated reference values from Section 5 of the Project Instructions. The acceptance threshold is 5% deviation.
+
+```{python}
+#| label: fig-validation
+#| fig-cap: "Parameter deviations across all scenarios — all within the 5% acceptance threshold"
+
+fig = plot_validation_deviations(validations)
+plt.show()
+plt.close(fig)
+```
+
+```{python}
+#| output: asis
+
+for val in validations:
+    status = "PASS" if val.all_passed else "**FAIL**"
+    print(f"\n## {val.n_pumps}-Pump Scenario (φ = {val.phi_pct}%) — {status}\n")
+    df = validation_dataframe(val)
+    print(df.to_markdown(index=False))
+    print()
+    for w in val.warnings:
+        print(f"> **Warning:** {w}")
+    print()
+```
+
+# 24-Hour Extended Period Simulation
+
+The EPS models a full 24-hour operating cycle with scheduled pump trips to test the rule-based control system response. The standby pump (PUMP_5) activates automatically when a duty pump trips, and the RIKO valve adjusts its opening to match the new pump configuration.
+
+## Pump Trip Schedule
+
+```{python}
+#| output: asis
+
+for trip in DEFAULT_PUMP_TRIPS:
+    print(f"- **{trip.pump_id}**: trip at hour {trip.trip_hour:.0f}, "
+          f"restore at hour {trip.restore_hour:.0f}")
+```
+
+```{python}
+#| label: fig-eps
+#| fig-cap: "24-hour EPS time series — flow, pump head, and pump ON/OFF status"
+
+fig = plot_eps_timeseries(eps)
+plt.show()
+plt.close(fig)
+```
+
+## Event Log
+
+The table below shows only timesteps where pump status or RIKO valve position changes.
+
+```{python}
+#| label: tbl-eps
+#| tbl-cap: "EPS event log — state transitions during pump trip/restore sequence"
+
+df = eps_events_dataframe(eps)
+Markdown(df.to_markdown(index=False))
+```
+
+# Notes and Warnings
+
+1. **H_PLANT = 18.17 m** is back-calculated from system data, not field-measured. All operating points shift if this value changes.
+
+2. **1-pump scenario** produces Q_total below the VAG minimum operating flow (4,500 m³/h). This is a known system characteristic, not a modeling error.
+
+3. **Valve headloss** uses the ISO 5167 Kv method: ΔH = Q² × 132.15 / Kv². VAG's internal ζ (zeta) values are *not* used.
+
+4. **Pump efficiency** is fixed at the duty-point value (η = 88%) for energy calculations. Actual efficiency varies with the operating point along the pump curve.
+
+5. **EPS rule-based controls** handle standby pump activation (PUMP_5) and RIKO valve position changes automatically, following the priority-based control strategy described by Georgescu et al. (CCWI 2015).
+
+6. **Friction model:** Darcy-Weisbach throughout, appropriate for large-diameter pipes at Re > 10⁶.
