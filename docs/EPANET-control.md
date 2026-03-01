@@ -1,0 +1,21 @@
+### 1. Constant-Speed Pump + PRV/PSV
+
+**The Real-World Strategy:**
+In this configuration, centrifugal pumps operate at a fixed rotational speed, and system pressure is managed using specific regulating valves. A **Pressure Reducing Valve (PRV)** is installed downstream of the pump to throttle the flow and maintain a specific maximum pressure for downstream users. Alternatively, a **Pressure Sustaining Valve (PSV)** is placed upstream of a discharge point, such as on a bypass pipe leading back to a reservoir, to maintain a minimum required suction or backpressure. During standard operations, the pressure setpoints for these valves remain completely static.
+
+**EPANET Representation and Limitations:**
+EPANET models this strategy seamlessly because PRVs and PSVs are native, built-in components. To simulate a PRV, you place the valve on the discharge line and assign it a fixed pressure setting; if there is enough upstream head, the valve automatically throttles to keep the downstream head at this exact value. To simulate a PSV, you place it on the bypass pipe and assign the target upstream head. EPANET’s solver automatically calculates the exact flow and head required to maintain these static settings at every time step. 
+
+However, there is a limitation: because these built-in valves use static setpoints, you cannot smoothly ramp their target pressures up or down during a simulation. If you need to emulate changing setpoints, you must use rule-based control statements to change the valve's "fixed status" (overriding it to "opened" or "closed") or manually configure multiple parallel valves and swap links to take over under different rule conditions.
+
+### 2. Throttle Control Valve (TCV) on Pump Discharge
+
+**The Real-World Strategy:**
+When fixed-speed pumps must meet variable system demands, flow is reduced by partially closing a discharge throttle valve. As the valve becomes "more closed," its internal flow restriction increases, adding a variable resistance that dynamically steepens the system curve. The valve absorbs the excess pump head by forcing a controlled pressure drop, dissipating the pumping energy as heat and turbulence. This method is typically used to explicitly model and manage the energy penalty (throttling ratio) in systems where stable demands, discrete pump staging, or capital constraints make variable-speed drives impractical.
+
+**EPANET Representation and Limitations:**
+To explicitly model the specific energy loss caused by a throttling valve, you must force EPANET to recognize the variable resistance on the discharge line. This is achieved in two ways, both of which require navigating EPANET's limitations:
+
+*   **Using Minor Loss Coefficients:** You can model the valve by adjusting its minor head loss coefficient to emulate different throttled positions. Because the valve needs to change its restriction, you can program simple time-based control statements to manually inject higher loss coefficients when the valve needs to be "more closed" and lower ones when it opens.
+*   **Using General Purpose Valves (GPVs):** For highly precise headloss tracking, engineers use a GPV configured with a pre-computed headloss curve. The headloss for a specific valve opening is calculated directly from its flow capacity ($K_v$) using the universal formula $\Delta H = Q^2 \times 132.15 / K_v^2$. This explicitly models the exact throttling ratio across the valve for that specific operating stage. 
+*   **The Parallel Link Workaround:** EPANET has a strict limitation where it cannot dynamically swap GPV curve IDs via rule-based controls during a simulation. To emulate a single valve throttling through different discrete openings (e.g., 44%, 38%, 30%, 22%), the modeler must build multiple parallel GPV links—one for each valve opening. Rule-based controls are then programmed in a strict priority hierarchy to ensure that only **one** GPV link is open at a time depending on the system state (such as the number of duty pumps currently running), while the others are forced closed.
