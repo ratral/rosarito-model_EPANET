@@ -12,13 +12,17 @@ from epyt import epanet
 
 from rosarito.constants import (
     INP_FILE,
+    INP_FILE_REV3,
     DUTY_PUMP_IDS,
     STANDBY_PUMP_ID,
     PUMP_IDS,
     RIKO_IDS,
+    RIKO_IDS_ALL,
     RIKO_OPENINGS,
+    RIKO_OPENINGS_ALL,
     RIKO_BY_NPUMPS,
     PIPE_IDS,
+    PIPE_DS_IDS,
     JUNCTION_IDS,
     RESERVOIR_IDS,
     RikoOpening,
@@ -53,6 +57,24 @@ def run_staging_scenarios(
     results: list[SteadyStateResult] = []
 
     for opening in RIKO_OPENINGS:
+        result = _run_single_scenario(path, opening)
+        results.append(result)
+
+    return results
+
+
+def run_staging_scenarios_extended(
+    inp_path: str | Path | None = None,
+) -> list[SteadyStateResult]:
+    """Run all 7 staging scenarios (including 3 intermediate openings).
+
+    Uses Rev3 INP file by default (with all 7 GPV curves).
+    Returns a list of SteadyStateResult ordered from phi=44% down to phi=22%.
+    """
+    path = str(inp_path or INP_FILE_REV3)
+    results: list[SteadyStateResult] = []
+
+    for opening in RIKO_OPENINGS_ALL:
         result = _run_single_scenario(path, opening)
         results.append(result)
 
@@ -105,7 +127,9 @@ def _configure_riko(
     d: epanet, link_idx: dict[str, int], active_opening: RikoOpening,
 ) -> None:
     """Open only the GPV for the active opening, close all others."""
-    for riko_id in RIKO_IDS:
+    # Use all 7 GPVs if present (Rev3), otherwise only original 4 (Rev2)
+    riko_ids = RIKO_IDS_ALL if "RIKO_40" in link_idx else RIKO_IDS
+    for riko_id in riko_ids:
         status = 1 if riko_id == active_opening.gpv_link_id else 0
         d.setLinkInitialStatus(link_idx[riko_id], status)
 
@@ -118,8 +142,12 @@ def _extract_results(
     opening: RikoOpening,
 ) -> SteadyStateResult:
     """Extract hydraulic results from the computed time series."""
+    # Detect subdivided model (Rev3: P_DS_1..4) vs original (Rev2: P_DS)
+    subdivided = "P_DS_1" in link_idx
+
     # Flow through downstream pipe = total system flow
-    q_total = float(ts.Flow[0, link_idx["P_DS"] - 1])
+    ds_flow_id = "P_DS_1" if subdivided else "P_DS"
+    q_total = float(ts.Flow[0, link_idx[ds_flow_id] - 1])
 
     # Heads at key nodes (EPyT uses 0-based column indices in ts arrays)
     h_suction = float(ts.Head[0, node_idx["J_SUCTION"] - 1])
@@ -136,13 +164,20 @@ def _extract_results(
     # Flow per pump
     q_per_pump = q_total / opening.n_pumps
 
-    # Pipe velocities and headlosses
+    # Pipe velocities and headlosses — use actual pipes present in model
     velocities = {}
     headlosses = {}
-    for pipe_id in PIPE_IDS:
+    pipe_ids = PIPE_IDS if subdivided else ["P_INTAKE", "P_US", "P_DS"]
+    for pipe_id in pipe_ids:
         idx = link_idx[pipe_id] - 1
         velocities[pipe_id] = float(ts.Velocity[0, idx])
         headlosses[pipe_id] = float(ts.HeadLoss[0, idx])
+
+    if subdivided:
+        # Aggregate P_DS segments into a single "P_DS" entry for backward compat.
+        velocities["P_DS"] = velocities["P_DS_1"]
+        h_plant = float(ts.Head[0, node_idx["PLANT"] - 1])
+        headlosses["P_DS"] = h_riko_out - h_plant
 
     return SteadyStateResult(
         n_active_pumps=opening.n_pumps,
@@ -214,8 +249,13 @@ def run_eps_with_trips(
         # Extract time series for all tracked elements
         time_s = ts.Time.tolist()
 
-        all_link_ids = PUMP_IDS + RIKO_IDS + PIPE_IDS
-        all_node_ids = JUNCTION_IDS + RESERVOIR_IDS
+        # Detect subdivided model (Rev3) vs original (Rev2)
+        subdivided = "P_DS_1" in link_idx
+        eps_pipe_ids = PIPE_IDS if subdivided else ["P_INTAKE", "P_US", "P_DS"]
+        eps_node_ids = JUNCTION_IDS if subdivided else [
+            "J_SUCTION", "J_MANIFOLD", "J_RIKO_IN", "J_RIKO_OUT"]
+        all_link_ids = PUMP_IDS + RIKO_IDS + eps_pipe_ids
+        all_node_ids = eps_node_ids + RESERVOIR_IDS
 
         flows: dict[str, list[float]] = {}
         velocities: dict[str, list[float]] = {}
@@ -225,6 +265,10 @@ def run_eps_with_trips(
             flows[lid] = ts.Flow[:, idx].tolist()
             velocities[lid] = ts.Velocity[:, idx].tolist()
             statuses[lid] = [int(s) for s in ts.Status[:, idx].tolist()]
+
+        if subdivided:
+            flows["P_DS"] = flows["P_DS_1"]
+            velocities["P_DS"] = velocities["P_DS_1"]
 
         heads: dict[str, list[float]] = {}
         for nid in all_node_ids:

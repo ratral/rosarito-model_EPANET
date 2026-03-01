@@ -93,3 +93,36 @@ def compute_all_scenario_energies(
         compute_scenario_energy(r.n_active_pumps, r.q_per_pump_lps, r.h_pump_m, eta_pct)
         for r in results
     ]
+
+
+# ---------------------------------------------------------------------------
+# Throttle-loss quantification
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ThrottleLoss:
+    """Power wasted across the RIKO valve at one operating point."""
+    q_total_lps: float
+    dh_riko_m: float
+    p_throttle_kw: float
+    daily_kwh: float
+
+
+def compute_throttle_loss(q_total_lps: float, dh_riko_m: float) -> ThrottleLoss:
+    """Compute power wasted by RIKO valve throttling.
+
+    P_throttle = rho * g * Q(m³/s) * dH_RIKO / 1000  [kW]
+
+    Args:
+        q_total_lps: Total system flow in l/s
+        dh_riko_m: Head loss across the RIKO valve in m
+    """
+    q_m3s = q_total_lps / 1000.0
+    p_throttle = RHO_SEAWATER * G * q_m3s * dh_riko_m / 1000.0  # kW
+    daily_kwh = p_throttle * 24.0
+    return ThrottleLoss(
+        q_total_lps=q_total_lps,
+        dh_riko_m=dh_riko_m,
+        p_throttle_kw=p_throttle,
+        daily_kwh=daily_kwh,
+    )

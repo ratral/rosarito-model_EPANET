@@ -1,13 +1,15 @@
 """Rosarito Desalination Plant — EPANET hydraulic model automation.
 
 Usage:
-    python main.py              # Run all analyses
-    python main.py staging      # Steady-state staging only
-    python main.py energy       # Energy post-processing only
-    python main.py eps          # 24h EPS with pump trips only
-    python main.py report       # Generate Markdown report → reports/scenarios_report.md
-    python main.py report path  # Generate report to custom path
-    python main.py quarto       # Render Quarto PDF report → reports/report.pdf
+    python main.py                  # Run all analyses
+    python main.py staging          # Steady-state staging only (4 scenarios, Rev2)
+    python main.py staging-extended # All 7 scenarios (Rev3) with validation
+    python main.py energy           # Energy post-processing only
+    python main.py optimize         # Throttling analysis + VFD comparison
+    python main.py eps              # 24h EPS with pump trips only
+    python main.py report           # Generate Markdown report
+    python main.py report path      # Generate report to custom path
+    python main.py quarto           # Render Quarto PDF report
 """
 
 from __future__ import annotations
@@ -15,15 +17,22 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from rosarito.constants import INP_FILE
-from rosarito.scenarios import run_staging_scenarios, run_eps_with_trips
-from rosarito.energy import compute_all_scenario_energies
-from rosarito.validation import validate_all_scenarios
+from rosarito.constants import INP_FILE, INP_FILE_REV3, REFERENCE_POINTS_ALL
+from rosarito.scenarios import (
+    run_staging_scenarios,
+    run_staging_scenarios_extended,
+    run_eps_with_trips,
+)
+from rosarito.energy import compute_all_scenario_energies, compute_throttle_loss
+from rosarito.optimization import compute_vfd_comparison
+from rosarito.validation import validate_all_scenarios, validate_all_extended
 from rosarito.reporting import (
     print_staging_table,
     print_validation_report,
     print_energy_table,
     print_eps_summary,
+    print_throttling_analysis,
+    print_vfd_comparison,
 )
 from rosarito.report import generate_report
 
@@ -44,6 +53,40 @@ def run_energy() -> None:
     results = run_staging_scenarios()
 
     print_energy_table(compute_all_scenario_energies(results))
+
+
+def run_staging_extended() -> None:
+    """Run all 7 extended staging scenarios (Rev3) with validation."""
+    print(f"\nLoading model: {INP_FILE_REV3}")
+    results = run_staging_scenarios_extended()
+    print_staging_table(results)
+
+    validations = validate_all_extended(results)
+    print_validation_report(validations)
+
+
+def run_optimize() -> None:
+    """Run throttling analysis and VFD comparison."""
+    # Throttling analysis from reference operating points
+    throttle_results = [
+        compute_throttle_loss(ref.q_total_lps, ref.dh_riko_m)
+        for ref in REFERENCE_POINTS_ALL
+    ]
+    phi_labels = [ref.phi_pct for ref in REFERENCE_POINTS_ALL]
+    print_throttling_analysis(throttle_results, phi_labels=phi_labels)
+
+    # VFD comparison for each reference point
+    vfd_results = [
+        compute_vfd_comparison(
+            n_pumps=ref.n_pumps,
+            phi_pct=ref.phi_pct,
+            q_total_lps=ref.q_total_lps,
+            h_pump_m=ref.h_pump_m,
+            dh_riko_m=ref.dh_riko_m,
+        )
+        for ref in REFERENCE_POINTS_ALL
+    ]
+    print_vfd_comparison(vfd_results)
 
 
 def run_eps() -> None:
@@ -82,7 +125,9 @@ def run_quarto() -> None:
 def main() -> None:
     commands = {
         "staging": run_staging,
+        "staging-extended": run_staging_extended,
         "energy": run_energy,
+        "optimize": run_optimize,
         "eps": run_eps,
         "report": run_report,
         "quarto": run_quarto,

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from rosarito.constants import lps_to_m3h
 from rosarito.model import SteadyStateResult, EPSResult
-from rosarito.energy import ScenarioEnergyResult
+from rosarito.energy import ScenarioEnergyResult, ThrottleLoss
+from rosarito.optimization import VFDResult
 from rosarito.validation import ScenarioValidation
 from rosarito.eps_utils import iter_eps_events
 
@@ -141,6 +142,76 @@ def print_eps_summary(eps: EPSResult) -> None:
             f"{status_chars[2]:>4}  {status_chars[3]:>4}  "
             f"{status_chars[4]:>4}  {row.n_active:>5}  {row.riko_opening:>8}  "
             f"{row.q_ds_lps:>10.1f}  {row.q_ds_m3h:>10.0f}  {row.h_pump_m:>8.2f}"
+        )
+
+    print("=" * 110)
+    print()
+
+
+# ---------------------------------------------------------------------------
+# Throttling analysis
+# ---------------------------------------------------------------------------
+
+def print_throttling_analysis(
+    throttle_results: list[ThrottleLoss],
+    phi_labels: list[int] | None = None,
+) -> None:
+    """Print throttle-loss table: phi, Q, dH_RIKO, P_throttle, daily_kWh."""
+    print()
+    print("=" * 90)
+    print("  RIKO VALVE THROTTLING LOSS ANALYSIS")
+    print("=" * 90)
+    print(
+        f"{'phi%':>6}  {'Q_total':>10}  {'Q_total':>10}  "
+        f"{'dH_RIKO':>8}  {'P_throttle':>12}  {'E_24h':>10}"
+    )
+    print(
+        f"{'':>6}  {'(l/s)':>10}  {'(m3/h)':>10}  "
+        f"{'(m)':>8}  {'(kW)':>12}  {'(kWh)':>10}"
+    )
+    print("-" * 90)
+
+    for i, t in enumerate(throttle_results):
+        q_m3h = lps_to_m3h(t.q_total_lps)
+        phi_str = f"{phi_labels[i]:>4}%" if phi_labels else ""
+        print(
+            f"{phi_str:>6}  {t.q_total_lps:>10.1f}  {q_m3h:>10.0f}  "
+            f"{t.dh_riko_m:>8.2f}  {t.p_throttle_kw:>12.1f}  {t.daily_kwh:>10.0f}"
+        )
+
+    print("=" * 90)
+    print()
+
+
+# ---------------------------------------------------------------------------
+# VFD comparison
+# ---------------------------------------------------------------------------
+
+def print_vfd_comparison(vfd_results: list[VFDResult]) -> None:
+    """Print VFD vs throttled comparison table."""
+    print()
+    print("=" * 110)
+    print("  VFD COMPARISON — THROTTLED (FIXED SPEED) vs VARIABLE FREQUENCY DRIVE")
+    print("=" * 110)
+    print(
+        f"{'phi%':>6}  {'N':>3}  {'Q_total':>8}  {'H_pump':>7}  {'dH_RIKO':>7}  "
+        f"{'N/N_r':>6}  {'P_throttle':>11}  {'P_VFD':>8}  "
+        f"{'Save/pump':>10}  {'Save_tot':>9}  {'Save':>6}"
+    )
+    print(
+        f"{'':>6}  {'':>3}  {'(l/s)':>8}  {'(m)':>7}  {'(m)':>7}  "
+        f"{'':>6}  {'(kW/pump)':>11}  {'(kW/p)':>8}  "
+        f"{'(kW)':>10}  {'(kW)':>9}  {'(%)':>6}"
+    )
+    print("-" * 110)
+
+    for v in vfd_results:
+        print(
+            f"{v.phi_pct:>5}%  {v.n_pumps:>3}  {v.q_total_lps:>8.1f}  "
+            f"{v.h_pump_throttled_m:>7.2f}  {v.h_pump_throttled_m - v.h_pump_vfd_m:>7.2f}  "
+            f"{v.speed_ratio:>6.3f}  {v.p_shaft_throttled_kw:>11.1f}  "
+            f"{v.p_shaft_vfd_kw:>8.1f}  {v.saving_per_pump_kw:>10.1f}  "
+            f"{v.saving_total_kw:>9.1f}  {v.saving_pct:>5.1f}%"
         )
 
     print("=" * 110)

@@ -12,6 +12,7 @@ from rosarito.constants import (
     Q_MIN_STABLE_LPS,
     VAG_QMIN_M3H,
     REFERENCE_BY_NPUMPS,
+    REFERENCE_BY_PHI,
     ReferenceOperatingPoint,
     lps_to_m3h,
 )
@@ -110,3 +111,48 @@ def validate_all_scenarios(
 ) -> list[ScenarioValidation]:
     """Validate all staging scenarios."""
     return [validate_steady_state(r) for r in results]
+
+
+def validate_extended_scenario(
+    result: SteadyStateResult,
+) -> ScenarioValidation:
+    """Validate one computed scenario against REFERENCE_BY_PHI (all 7 points)."""
+    ref = REFERENCE_BY_PHI.get(result.riko_opening_pct)
+    if ref is None:
+        return ScenarioValidation(
+            n_pumps=result.n_active_pumps,
+            phi_pct=result.riko_opening_pct,
+            warnings=[f"No reference point for phi={result.riko_opening_pct}%"],
+        )
+
+    val = ScenarioValidation(
+        n_pumps=result.n_active_pumps,
+        phi_pct=result.riko_opening_pct,
+    )
+
+    val.checks.append(_check("Q_total", result.q_total_lps, ref.q_total_lps, "l/s"))
+    val.checks.append(_check("Q/pump", result.q_per_pump_lps, ref.q_per_pump_lps, "l/s"))
+    val.checks.append(_check("H_pump", result.h_pump_m, ref.h_pump_m, "m"))
+    val.checks.append(_check("dH_RIKO", result.dh_riko_m, ref.dh_riko_m, "m"))
+
+    if result.q_per_pump_lps < Q_MIN_STABLE_LPS:
+        val.warnings.append(
+            f"Q/pump = {result.q_per_pump_lps:.1f} l/s < min stable "
+            f"({Q_MIN_STABLE_LPS} l/s)"
+        )
+
+    q_total_m3h = lps_to_m3h(result.q_total_lps)
+    if q_total_m3h < VAG_QMIN_M3H:
+        val.warnings.append(
+            f"Q_total = {q_total_m3h:.0f} m3/h < VAG Qmin ({VAG_QMIN_M3H:.0f} m3/h) "
+            f"— known system characteristic for {result.n_active_pumps}-pump"
+        )
+
+    return val
+
+
+def validate_all_extended(
+    results: list[SteadyStateResult],
+) -> list[ScenarioValidation]:
+    """Validate all 7 extended staging scenarios."""
+    return [validate_extended_scenario(r) for r in results]
