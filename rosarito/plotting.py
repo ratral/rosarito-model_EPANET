@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
+import pandas as pd
+
 from rosarito.constants import (
     H_SHUTOFF_M,
     Q_RATED_LPS,
@@ -17,6 +19,8 @@ from rosarito.constants import (
     Q_MIN_STABLE_LPS,
     Q_BEP_BOWL_LPS,
     PUMP_IDS,
+    RIKO_CSV,
+    RIKO_OPENINGS_ALL,
 )
 from rosarito.model import SteadyStateResult, EPSResult
 from rosarito.energy import ScenarioEnergyResult
@@ -32,6 +36,9 @@ VAG_GRAY = "#808080"
 VAG_DARK = "#333333"
 
 SCENARIO_COLORS = [VAG_DARK_GREEN, VAG_GREEN, VAG_BLUE, "#E8A317"]
+
+# Color map: n_pumps → color for valve operating point markers
+_NPUMPS_COLORS = {4: VAG_DARK_GREEN, 3: VAG_GREEN, 2: VAG_BLUE, 1: "#E8A317"}
 
 
 def _apply_style(ax: plt.Axes) -> None:
@@ -249,6 +256,92 @@ def plot_validation_deviations(
                  fontsize=11, fontweight="bold", color=VAG_DARK)
     ax.legend(loc="lower right", fontsize=8)
     ax.invert_yaxis()
+
+    fig.tight_layout()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Valve characteristic data loader
+# ---------------------------------------------------------------------------
+
+def _load_riko_csv() -> pd.DataFrame:
+    """Load and parse the RIKO DN1800 valve characteristic CSV.
+
+    Strips '%' from positions and removes commas from Kv numbers.
+    """
+    df = pd.read_csv(RIKO_CSV)
+    df["position"] = df["valve_position"].str.rstrip("%").astype(int)
+    df["kv"] = df["kv_value"].astype(str).str.replace(",", "").astype(float)
+    df["zeta"] = df["zeta_value"].astype(float)
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Figure 5: Valve Kv curve with operating points
+# ---------------------------------------------------------------------------
+
+def plot_valve_kv() -> Figure:
+    """Kv vs opening % with 7 operating points color-coded by pump count."""
+    df = _load_riko_csv()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    _apply_style(ax)
+
+    # Full Kv curve
+    ax.plot(df["position"], df["kv"], color=VAG_DARK_GREEN, linewidth=2,
+            label="Kv characteristic")
+
+    # Operating range shading (22%–44%)
+    ax.axvspan(22, 44, color=VAG_GREEN, alpha=0.10, label="Operating range (22–44%)")
+
+    # Operating points from RIKO_OPENINGS_ALL
+    for op in RIKO_OPENINGS_ALL:
+        color = _NPUMPS_COLORS[op.n_pumps]
+        ax.plot(op.phi_pct, op.kv_m3h, "o", color=color, markersize=9, zorder=5)
+        ax.annotate(
+            f"{op.n_pumps}P @ {op.phi_pct}%",
+            (op.phi_pct, op.kv_m3h),
+            textcoords="offset points", xytext=(10, 6),
+            fontsize=8, fontweight="bold", color=color,
+        )
+
+    ax.set_xlabel("Valve opening (%)", fontsize=10)
+    ax.set_ylabel("Flow coefficient, Kv (m³/h)", fontsize=10)
+    ax.set_title("VAG RIKO DN1800 — Kv Characteristic",
+                 fontsize=11, fontweight="bold", color=VAG_DARK)
+    ax.legend(loc="upper left", fontsize=9)
+    ax.set_xlim(0, 105)
+    ax.set_ylim(0, None)
+
+    fig.tight_layout()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Figure 6: Valve zeta curve (log scale)
+# ---------------------------------------------------------------------------
+
+def plot_valve_zeta() -> Figure:
+    """Zeta vs opening % with logarithmic y-axis and operating range shaded."""
+    df = _load_riko_csv()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    _apply_style(ax)
+
+    # Full zeta curve (log scale)
+    ax.semilogy(df["position"], df["zeta"], color=VAG_BLUE, linewidth=2,
+                label="ζ characteristic")
+
+    # Operating range shading (22%–44%)
+    ax.axvspan(22, 44, color=VAG_GREEN, alpha=0.10, label="Operating range (22–44%)")
+
+    ax.set_xlabel("Valve opening (%)", fontsize=10)
+    ax.set_ylabel("Loss coefficient, ζ (—)", fontsize=10)
+    ax.set_title("VAG RIKO DN1800 — ζ Characteristic (Log Scale)",
+                 fontsize=11, fontweight="bold", color=VAG_DARK)
+    ax.legend(loc="upper right", fontsize=9)
+    ax.set_xlim(0, 105)
 
     fig.tight_layout()
     return fig

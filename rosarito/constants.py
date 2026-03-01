@@ -16,6 +16,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INP_FILE = _PROJECT_ROOT / "inp_files" / "ROSARITO_EPANET_Rev2.inp"
 INP_FILE_REV3 = _PROJECT_ROOT / "inp_files" / "ROSARITO_EPANET_Rev3.inp"
+RIKO_CSV = _PROJECT_ROOT / "data" / "riko_cylinder_e_dn1800.csv"
 
 # ---------------------------------------------------------------------------
 # Physical constants

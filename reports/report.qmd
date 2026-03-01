@@ -65,6 +65,8 @@ from rosarito.plotting import (
     plot_energy_comparison,
     plot_eps_timeseries,
     plot_validation_deviations,
+    plot_valve_kv,
+    plot_valve_zeta,
 )
 
 # Run all analyses once
@@ -108,6 +110,35 @@ SEA (H=0m) → P_INTAKE → J_SUCTION → PUMP_1..5 (parallel) → J_MANIFOLD
 ## Operating Principle
 
 The RIKO plunger valve adjusts its opening (22%–44%) to match the number of active pumps, providing sufficient throttling headloss to keep each pump near its best efficiency point. Four parallel GPV links in EPANET model different valve openings; rule-based controls activate the correct GPV when pump count changes.
+
+## Valve Characteristics
+
+The VAG RIKO DN1800 plunger valve modulates flow using its Kv (flow coefficient) characteristic. Headloss through the valve is computed using the ISO 5167 Kv method:
+
+$$\Delta H = \frac{Q^2 \times 132.15}{K_v^2}$$
+
+where Q is in m³/h and Kv in m³/h. The 7 operating points (4 primary + 3 intermediate openings) are marked on the Kv curve below, color-coded by the number of active pumps.
+
+```{python}
+#| label: fig-valve-kv
+#| fig-cap: "VAG RIKO DN1800 Kv characteristic with 7 operating points color-coded by pump count"
+
+import matplotlib.pyplot as plt
+fig = plot_valve_kv()
+plt.show()
+plt.close(fig)
+```
+
+The valve's loss coefficient ζ (zeta) is shown below for reference. Note that VAG's ζ values are a non-standard internal parameter and are **not** used in the hydraulic calculations — only the Kv method is applied.
+
+```{python}
+#| label: fig-valve-zeta
+#| fig-cap: "VAG RIKO DN1800 ζ characteristic — VAG-internal parameter, not used in calculations"
+
+fig = plot_valve_zeta()
+plt.show()
+plt.close(fig)
+```
 
 # Steady-State Staging Scenarios
 
