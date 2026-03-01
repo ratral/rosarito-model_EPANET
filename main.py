@@ -76,16 +76,7 @@ def run_optimize() -> None:
     print_throttling_analysis(throttle_results, phi_labels=phi_labels)
 
     # VFD comparison for each reference point
-    vfd_results = [
-        compute_vfd_comparison(
-            n_pumps=ref.n_pumps,
-            phi_pct=ref.phi_pct,
-            q_total_lps=ref.q_total_lps,
-            h_pump_m=ref.h_pump_m,
-            dh_riko_m=ref.dh_riko_m,
-        )
-        for ref in REFERENCE_POINTS_ALL
-    ]
+    vfd_results = [compute_vfd_comparison(ref) for ref in REFERENCE_POINTS_ALL]
     print_vfd_comparison(vfd_results)
 
 

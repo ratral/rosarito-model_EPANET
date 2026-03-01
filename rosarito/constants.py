@@ -6,7 +6,6 @@ Section references noted inline.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -60,22 +59,8 @@ class RikoOpening:
     curve_id: str            # EPANET GPV curve ID
 
 
-RIKO_OPENINGS: list[RikoOpening] = [
-    RikoOpening(phi_pct=44, kv_m3h=21038.45, n_pumps=4,
-                gpv_link_id="RIKO_44", curve_id="RIKO_44pct"),
-    RikoOpening(phi_pct=38, kv_m3h=14444.21, n_pumps=3,
-                gpv_link_id="RIKO_38", curve_id="RIKO_38pct"),
-    RikoOpening(phi_pct=30, kv_m3h=7621.47,  n_pumps=2,
-                gpv_link_id="RIKO_30", curve_id="RIKO_30pct"),
-    RikoOpening(phi_pct=22, kv_m3h=3179.78,  n_pumps=1,
-                gpv_link_id="RIKO_22", curve_id="RIKO_22pct"),
-]
-
-# Lookup by n_pumps for convenience
-RIKO_BY_NPUMPS: dict[int, RikoOpening] = {r.n_pumps: r for r in RIKO_OPENINGS}
-
 # ---------------------------------------------------------------------------
-# Extended RIKO openings — original 4 + 3 intermediate (phi=40%, 34%, 26%)
+# RIKO openings — all 7 points (original 4 + 3 intermediate: phi=40%, 34%, 26%)
 # Kv values: exact rows from riko_cylinder_e_dn1800.csv (2% steps)
 # Intermediate openings allow finer throttling control per pump count.
 # ---------------------------------------------------------------------------
@@ -96,6 +81,15 @@ RIKO_OPENINGS_ALL: list[RikoOpening] = [
                 gpv_link_id="RIKO_22", curve_id="RIKO_22pct"),
 ]
 
+# Original 4 openings (one per pump count) — derived from canonical list
+_ORIGINAL_PHI = {44, 38, 30, 22}
+RIKO_OPENINGS: list[RikoOpening] = [
+    o for o in RIKO_OPENINGS_ALL if o.phi_pct in _ORIGINAL_PHI
+]
+
+# Lookup by n_pumps for convenience
+RIKO_BY_NPUMPS: dict[int, RikoOpening] = {r.n_pumps: r for r in RIKO_OPENINGS}
+
 # ---------------------------------------------------------------------------
 # EPANET element IDs
 # ---------------------------------------------------------------------------
@@ -107,10 +101,12 @@ RIKO_IDS = ["RIKO_44", "RIKO_38", "RIKO_30", "RIKO_22"]
 RIKO_IDS_ALL = ["RIKO_44", "RIKO_40", "RIKO_38", "RIKO_34", "RIKO_30", "RIKO_26", "RIKO_22"]
 
 PIPE_IDS = ["P_INTAKE", "P_US", "P_DS_1", "P_DS_2", "P_DS_3", "P_DS_4"]
+PIPE_IDS_REV2 = ["P_INTAKE", "P_US", "P_DS"]
 PIPE_DS_IDS = ["P_DS_1", "P_DS_2", "P_DS_3", "P_DS_4"]
 
 JUNCTION_IDS = ["J_SUCTION", "J_MANIFOLD", "J_RIKO_IN", "J_RIKO_OUT",
                 "J_DS_1", "J_DS_2", "J_DS_3"]
+JUNCTION_IDS_REV2 = ["J_SUCTION", "J_MANIFOLD", "J_RIKO_IN", "J_RIKO_OUT"]
 JUNCTION_DS_IDS = ["J_DS_1", "J_DS_2", "J_DS_3"]
 RESERVOIR_IDS = ["SEA", "PLANT"]
 
@@ -144,40 +140,9 @@ class ReferenceOperatingPoint:
     v_pipe_ms: float
 
 
-REFERENCE_POINTS: list[ReferenceOperatingPoint] = [
-    ReferenceOperatingPoint(
-        phi_pct=44, n_pumps=4,
-        q_total_lps=5016.0, q_total_m3h=18059.0,
-        q_per_pump_lps=1254.0, h_pump_m=26.12,
-        dh_riko_m=7.51, v_pipe_ms=1.971,
-    ),
-    ReferenceOperatingPoint(
-        phi_pct=38, n_pumps=3,
-        q_total_lps=3664.0, q_total_m3h=13189.0,
-        q_per_pump_lps=1221.0, h_pump_m=26.90,
-        dh_riko_m=8.50, v_pipe_ms=1.440,
-    ),
-    ReferenceOperatingPoint(
-        phi_pct=30, n_pumps=2,
-        q_total_lps=2221.0, q_total_m3h=7996.0,
-        q_per_pump_lps=1111.0, h_pump_m=29.48,
-        dh_riko_m=11.22, v_pipe_ms=0.873,
-    ),
-    ReferenceOperatingPoint(
-        phi_pct=22, n_pumps=1,
-        q_total_lps=1014.0, q_total_m3h=3651.0,
-        q_per_pump_lps=1014.0, h_pump_m=31.63,
-        dh_riko_m=13.44, v_pipe_ms=0.398,
-    ),
-]
-
-REFERENCE_BY_NPUMPS: dict[int, ReferenceOperatingPoint] = {
-    r.n_pumps: r for r in REFERENCE_POINTS
-}
-
 # ---------------------------------------------------------------------------
-# Extended reference points — includes 3 intermediate openings
-# Hand-calculated via Newton iteration on pump curve vs system curve.
+# Reference operating points — hand-calculated (Newton iteration)
+# All 7 points (Section 5 + 3 intermediate openings).
 # Pump curve: H = 46.54 - 5.300e-4 * Q^1.480 (Ruhrpumpen 35WX, Rev2)
 # Pipe friction: Darcy-Weisbach with Colebrook-White, nu=1.05e-6 m^2/s
 # ---------------------------------------------------------------------------
@@ -225,6 +190,15 @@ REFERENCE_POINTS_ALL: list[ReferenceOperatingPoint] = [
         dh_riko_m=13.44, v_pipe_ms=0.398,
     ),
 ]
+
+# Original 4 reference points (one per pump count) — derived from canonical list
+REFERENCE_POINTS: list[ReferenceOperatingPoint] = [
+    r for r in REFERENCE_POINTS_ALL if r.phi_pct in _ORIGINAL_PHI
+]
+
+REFERENCE_BY_NPUMPS: dict[int, ReferenceOperatingPoint] = {
+    r.n_pumps: r for r in REFERENCE_POINTS
+}
 
 REFERENCE_BY_PHI: dict[int, ReferenceOperatingPoint] = {
     r.phi_pct: r for r in REFERENCE_POINTS_ALL

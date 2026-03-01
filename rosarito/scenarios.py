@@ -22,8 +22,10 @@ from rosarito.constants import (
     RIKO_OPENINGS_ALL,
     RIKO_BY_NPUMPS,
     PIPE_IDS,
+    PIPE_IDS_REV2,
     PIPE_DS_IDS,
     JUNCTION_IDS,
+    JUNCTION_IDS_REV2,
     RESERVOIR_IDS,
     RikoOpening,
 )
@@ -47,38 +49,31 @@ def _build_name_index_maps(
 
 def run_staging_scenarios(
     inp_path: str | Path | None = None,
+    openings: list[RikoOpening] | None = None,
 ) -> list[SteadyStateResult]:
-    """Run all 4 staging scenarios (4-pump down to 1-pump).
+    """Run steady-state staging scenarios.
 
     Each scenario uses a fresh EPyT instance and a duration-0 simulation.
-    Returns a list of SteadyStateResult ordered from 4 pumps to 1 pump.
+
+    Args:
+        inp_path: Path to INP file. Defaults to Rev2 for original 4 openings,
+                  Rev3 when extended openings are requested.
+        openings: List of RIKO openings to simulate. Defaults to RIKO_OPENINGS (4).
     """
-    path = str(inp_path or INP_FILE)
-    results: list[SteadyStateResult] = []
+    if openings is None:
+        openings = RIKO_OPENINGS
+    if inp_path is None:
+        inp_path = INP_FILE_REV3 if openings is RIKO_OPENINGS_ALL else INP_FILE
+    path = str(inp_path)
 
-    for opening in RIKO_OPENINGS:
-        result = _run_single_scenario(path, opening)
-        results.append(result)
-
-    return results
+    return [_run_single_scenario(path, o) for o in openings]
 
 
 def run_staging_scenarios_extended(
     inp_path: str | Path | None = None,
 ) -> list[SteadyStateResult]:
-    """Run all 7 staging scenarios (including 3 intermediate openings).
-
-    Uses Rev3 INP file by default (with all 7 GPV curves).
-    Returns a list of SteadyStateResult ordered from phi=44% down to phi=22%.
-    """
-    path = str(inp_path or INP_FILE_REV3)
-    results: list[SteadyStateResult] = []
-
-    for opening in RIKO_OPENINGS_ALL:
-        result = _run_single_scenario(path, opening)
-        results.append(result)
-
-    return results
+    """Run all 7 staging scenarios (including 3 intermediate openings)."""
+    return run_staging_scenarios(inp_path, openings=RIKO_OPENINGS_ALL)
 
 
 def _run_single_scenario(
@@ -109,6 +104,16 @@ def _run_single_scenario(
         d.unload()
 
     return result
+
+
+def _get_pipe_and_junction_ids(
+    link_idx: dict[str, int],
+) -> tuple[list[str], list[str], bool]:
+    """Return (pipe_ids, junction_ids, is_subdivided) based on model topology."""
+    subdivided = "P_DS_1" in link_idx
+    pipe_ids = PIPE_IDS if subdivided else PIPE_IDS_REV2
+    junction_ids = JUNCTION_IDS if subdivided else JUNCTION_IDS_REV2
+    return pipe_ids, junction_ids, subdivided
 
 
 def _configure_pumps(
@@ -142,8 +147,7 @@ def _extract_results(
     opening: RikoOpening,
 ) -> SteadyStateResult:
     """Extract hydraulic results from the computed time series."""
-    # Detect subdivided model (Rev3: P_DS_1..4) vs original (Rev2: P_DS)
-    subdivided = "P_DS_1" in link_idx
+    pipe_ids, _, subdivided = _get_pipe_and_junction_ids(link_idx)
 
     # Flow through downstream pipe = total system flow
     ds_flow_id = "P_DS_1" if subdivided else "P_DS"
@@ -167,7 +171,6 @@ def _extract_results(
     # Pipe velocities and headlosses — use actual pipes present in model
     velocities = {}
     headlosses = {}
-    pipe_ids = PIPE_IDS if subdivided else ["P_INTAKE", "P_US", "P_DS"]
     for pipe_id in pipe_ids:
         idx = link_idx[pipe_id] - 1
         velocities[pipe_id] = float(ts.Velocity[0, idx])
@@ -250,10 +253,7 @@ def run_eps_with_trips(
         time_s = ts.Time.tolist()
 
         # Detect subdivided model (Rev3) vs original (Rev2)
-        subdivided = "P_DS_1" in link_idx
-        eps_pipe_ids = PIPE_IDS if subdivided else ["P_INTAKE", "P_US", "P_DS"]
-        eps_node_ids = JUNCTION_IDS if subdivided else [
-            "J_SUCTION", "J_MANIFOLD", "J_RIKO_IN", "J_RIKO_OUT"]
+        eps_pipe_ids, eps_node_ids, subdivided = _get_pipe_and_junction_ids(link_idx)
         all_link_ids = PUMP_IDS + RIKO_IDS + eps_pipe_ids
         all_node_ids = eps_node_ids + RESERVOIR_IDS
 
